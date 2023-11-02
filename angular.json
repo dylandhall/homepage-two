@@ -28,7 +28,9 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
-              "src/Bookmarks"
+              "src/Bookmarks",
+              "src/background.css",
+              "src/config.json"
             ],
             "styles": [
               "@angular/material/prebuilt-themes/pink-bluegrey.css",
@@ -53,6 +55,14 @@
               "outputHashing": "all"
             },
             "development": {
+              "assets": [
+                "src/favicon.ico",
+                "src/assets",
+                "src/Bookmarks",
+                "src/background.css",
+                "src/config.json",
+                "src/wallpaper.jpg"
+              ],
               "buildOptimizer": false,
               "optimization": false,
               "vendorChunk": true,
