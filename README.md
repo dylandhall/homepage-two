@@ -12,6 +12,10 @@ It's ridiculous but I like it so I'm checking it in so I can set it up again eas
 * Webserver is a wrapper I wrote running as a service for miniserve, see MiniserveWrapper folder
 * CopyFiles.ps1 runs as part of the NPM build to make updating easy, update as you see fit
 
+## Screenshot
+
+![image](https://github.com/dylandhall/homepage-two/assets/13939961/1f93919b-11ee-4bf9-8dd4-f92f395cb25a)
+
 
 ## HomeTwo
 
