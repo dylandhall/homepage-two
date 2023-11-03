@@ -94,7 +94,7 @@
         <span></span>
       </div>
     </div>
-    <div class="article" *ngIf="selectedItem$ | async as item">
+    <div class="article" *ngIf="selectedItem$ | async as item" [ngClass]="{'initial': noItemAfterDelay$ | async}">
       <div>
         <div class="article-heading">
           <a href="{{item.link}}">{{item.title}}</a>

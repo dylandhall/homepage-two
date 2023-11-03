@@ -1,10 +1,35 @@
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
+# Config file with API keys
+**/config.json
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+
 # Compiled output
 /dist
 /tmp
 /out-tsc
 /bazel-out
+
 
 # Node
 /node_modules

@@ -26,7 +26,11 @@ export class ConfigService {
 
   public loadConfig(): Promise<any> {
     const configUrl = 'config.json';
-    const config$ = this.http.get<IConfig>(configUrl).pipe(
+    const config$ = this.http.get<IConfig>(configUrl, {headers:{
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }}).pipe(
       filter(v => v!=null),
       shareReplay({bufferSize:1, refCount:true}),
     );

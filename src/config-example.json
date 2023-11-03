@@ -1,0 +1,39 @@
+{
+  "rssSources": [
+    {
+      "weight": 1,
+      "url": "https://theconversation.com/au/articles.atom"
+    },
+    {
+      "weight": 1,
+      "url": "https://www.abc.net.au/news/feed/51120/rss.xml"
+    },
+    {
+      "weight": 0.5,
+      "url": "https://www.motorsport.com/rss/category/bikes/news/"
+    },
+    {
+      "weight": 0.5,
+      "url": "https://www.crash.net/rss/motogp"
+    }
+  ],
+  "rssApiKey": "",
+  "googleApi": {
+    "clientSecret": "",
+    "clientId": ""
+  },
+  "weatherApiKey": "",
+  "location": {
+    "lat": 1.1,
+    "lon": 1.1
+  },
+  "githubQuery": {
+    "githubToken": "",
+    "owner": "Org",
+    "repo": "repo",
+    "username": "username"
+  },
+  "knownIcons": {
+    "zendesk.com": "https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://zendesk.com&size=64"
+  }
+}

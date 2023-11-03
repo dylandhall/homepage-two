@@ -123,11 +123,11 @@ div {
   @extend .issues;
   max-height: 40rem;
   width: 45rem;
-  transition: width 0.2s ease-in-out;
+  transition: width 0.1s ease-in-out;
 }
 
 .articles.issue {
-  width: 450px;
+  width: 25rem;
 }
 
 
@@ -138,6 +138,15 @@ div {
   max-height: 40rem;
   background: rgba(0, 0, 0, 0.9);
   margin-right: 4rem;
+  transition-property: max-width, opacity;
+  transition-duration: 0.1s;
+  transition-timing-function: ease-in-out;
+  opacity: 1;
+}
+
+.article.initial {
+  max-width: 60rem;
+  opacity: 0;
 }
 
 .article-heading {

@@ -16,6 +16,7 @@ import {
   from,
   interval,
   map,
+  merge,
   mergeMap,
   Observable,
   of,
@@ -121,7 +122,8 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   public selectedItemSource$: Subject<ItemWithFeed | null> = new Subject<ItemWithFeed | null>();
   public selectedItem$!: Observable<ItemWithFeed | null>;
-  public showArticle$ = new BehaviorSubject<boolean>(false);
+  public noItemAfterDelay$!: Observable<boolean>;
+  //public showArticle$ = new BehaviorSubject<boolean>(false);
   public showLogin$ = new BehaviorSubject<boolean>(false);
   public news$!: Observable<ItemWithFeed[]>;
 
@@ -145,6 +147,12 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly numberOfArticles = 30;
 
   private readonly config = this.configService.getConfig();
+
+  private readonly noCacheOptions = {headers:{
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }};
 
   public ngOnInit(): void {
 
@@ -220,7 +228,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       });
     }
 
-    this.cards$ = this.http.get<IBookmarksFile>('Bookmarks').pipe(
+    this.cards$ = this.http.get<IBookmarksFile>('Bookmarks', this.noCacheOptions).pipe(
       map(bm => bm.roots.bookmark_bar.children
         .filter(c => c.url)
         .map(c => {
@@ -250,8 +258,21 @@ export class HomeComponent implements OnInit, OnDestroy {
       shareReplay({ bufferSize: 1, refCount: true }),
       takeUntil(this.destroy$),
     );
-
-    this.selectedItem$.subscribe(() => this.showArticle$.next(false));
+    this.noItemAfterDelay$ = merge(
+      this.selectedItem$.pipe(
+        filter(v => v==null),
+        map(() => true),
+        startWith(true),
+        takeUntil(this.destroy$),
+      ),
+      this.selectedItem$.pipe(
+        filter(v => v!=null),
+        delay(1),
+        map(() => false),
+        takeUntil(this.destroy$),
+      )
+    );
+    //this.selectedItem$.subscribe(() => this.showArticle$.next(false));
     if ((this.config?.rssSources?.length ?? 0) > 0) {
       const news$ =
         interval(600000).pipe(
@@ -337,7 +358,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         return `${m!.summary} at ${hours > 12 ? hours - 12 : hours} ${hours > 12 ? 'pm' : 'am'}`;
       }, this.destroy$);
 
-    this.wallpaperDescription$ = this.http.get<IWallpaper>('wallpaper.json').pipe(
+    this.wallpaperDescription$ = this.http.get<IWallpaper>('wallpaper.json',this.noCacheOptions).pipe(
       map(v => v?.description??''),
       catchError(() => of('')),
       filter(v => v != null && v != ''),
