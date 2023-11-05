@@ -107,6 +107,6 @@
         <div [innerHTML]="item.content"></div>
       </div>
     </div>
-    <div class="wallpaper-description" *ngIf="wallpaperDescription$|async as desc">{{desc}}</div>
+    <div class="wallpaper-description" (click)="selectedItemSource$.next(null)" *ngIf="wallpaperDescription$|async as desc">{{desc}}</div>
   </div>
 </div>
