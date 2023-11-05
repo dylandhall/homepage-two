@@ -188,8 +188,12 @@ div {
   color: white;
   font-size: small;
   max-width: 10rem;
-  margin: 1rem 1rem 1rem auto;
   font-weight: 500;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 1rem;
+  margin: 0 0 0 auto;
 }
 
 .fade-out-div.fade-out-div.fade-out-div.fade-out-div {
