@@ -299,9 +299,8 @@ export class HomeComponent implements OnInit, OnDestroy {
               scan((acc, result) => ([...acc, ...result]), <ItemWithFeed[]>[]),
               map(arr =>
                 arr.reduce((acc, curr) => {
-                  if (!acc.some(item => item.link === curr.link)) {
-                    acc.push(curr);
-                  }
+                  if (acc.some(item => item.link.localeCompare(curr.link, 'en-AU', {sensitivity: 'base'}) === 0)) return acc;
+                  acc.push(curr);
                   return acc;
                 }, <ItemWithFeed[]>[])),
               map(v => {
