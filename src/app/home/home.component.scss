@@ -44,6 +44,8 @@ div {
   text-shadow: 4px 4px 10px #333;
   margin: 0 0 0.5rem auto;
   padding-right: 3rem;
+  white-space: nowrap;
+  overflow: hidden;
 
   .date {
     font-size: 18pt;
