@@ -25,6 +25,6 @@ export class WeatherService {
   }
   public getPirateWeather(): Observable<WeatherApiResponse | null> {
     if (this.config.weatherApiKey == null || this.config.location == null) return of(null);
-    return this.http.get<WeatherApiResponse>(`${this.baseUrl}/${this.config.weatherApiKey}/${this.config.location.lat},${this.config.location.lon}/?units=si`);
+    return this.http.get<WeatherApiResponse>(`${this.baseUrl}/${this.config.weatherApiKey}/${this.config.location.lat},${this.config.location.lon}?units=si`);
   }
 }
