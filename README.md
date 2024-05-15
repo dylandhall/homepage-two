@@ -1,6 +1,6 @@
 # Homepage project (number two)
 
-This is a small project I made so my new tab page is a bit more customised. I have an [extension](https://chrome.google.com/webstore/detail/custom-new-tab-url/mmjbdbjnoablegbkcklggeknkfcjkjiav) to let me set the new tab page, a tiny webserver running as a windows service to hand it to me, and a bunch of API keys to let it show me issues and PRs from github, some news RSS feeds, the weather and a nice wallpaper.
+This is a small project I made so my new tab page is a bit more customised. I have updated my chrome flags (chrome://flags/#custom-ntp) to let me set the new tab page, a tiny webserver running as a windows service to hand it to me, and a bunch of API keys to let it show me issues and PRs from github, some news RSS feeds, the weather and a nice wallpaper.
 
 It's ridiculous but I like it so I'm checking it in so I can set it up again easily elsewhere. If someone else uses any of this, you're welcome.
 
