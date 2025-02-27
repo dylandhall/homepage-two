@@ -16,6 +16,7 @@ It's ridiculous but I like it so I'm checking it in so I can set it up again eas
 
 ![image](https://github.com/dylandhall/homepage-two/assets/13939961/e9e66bf5-bd5d-415b-a2dc-c0c6cc9fbb99)
 
+Note I've since added times in many timezones, not pictured.
 
 ## HomeTwo
 
