@@ -35,5 +35,9 @@
   },
   "knownIcons": {
     "zendesk.com": "https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://zendesk.com&size=64"
-  }
+  },
+  "additionalTimezones": [
+    {"name": "AEST", "timezone": "Australia/Sydney"},
+    {"name": "SA", "timezone": "Africa/Johannesburg"}
+  ]
 }

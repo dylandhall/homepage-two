@@ -175,14 +175,17 @@ div {
 
 
 .weather {
-  color: white;
-  font-weight: bold;
   margin-left: auto;
   padding-right: 2rem;
-  text-shadow: 2px 2px 6px #333;
   > div {
+    color: white;
+    font-weight: bold;
+    text-shadow: 2px 2px 6px #333;
+
     > div {
-      @extend .weather-label;
+      > div {
+        @extend .weather-label;
+      }
     }
   }
 }

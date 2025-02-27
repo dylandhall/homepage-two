@@ -62,18 +62,18 @@ import {
 } from '../rssService.component';
 import { WeatherService } from '../weather-service';
 
-function getFilteredCachedShareableFromApi<T1, T2>(cacheKey:string,inPipe: Observable<T1>, project: (result: T1) => T2, destroy$: Observable<void>): Observable<T2> {
-  return getCachedShareableFromApi(cacheKey,inPipe, project, destroy$).pipe(
+function getFilteredCachedShareableFromApi$<T1, T2>(cacheKey:string,inPipe: Observable<T1>, project: (result: T1) => T2, destroy$: Observable<void>): Observable<T2> {
+  return getCachedShareableFromApi$(cacheKey,inPipe, project, destroy$).pipe(
     filter(v => v != null),
     map(v => v!),
     takeUntil(destroy$)
   );
 }
 
-function getCachedShareableFromApi<T1, T2>(cacheKey:string, inPipe: Observable<T1>, project: (result: T1) => T2, destroy$: Observable<void>): Observable<T2 | null> {
+function getCachedShareableFromApi$<T1, T2>(cacheKey:string, inPipe: Observable<T1>, project: (result: T1) => T2, destroy$: Observable<void>): Observable<T2 | null> {
   const cachedStr = localStorage.getItem(cacheKey);
 
-  const obs$ = getShareableFromApi(inPipe, project, destroy$);
+  const obs$ = getShareableFromApi$(inPipe, project, destroy$);
 
   obs$.subscribe(v => localStorage.setItem(cacheKey, JSON.stringify(v)));
 
@@ -82,7 +82,7 @@ function getCachedShareableFromApi<T1, T2>(cacheKey:string, inPipe: Observable<T
     takeUntil(destroy$),
   );
 }
-function getShareableFromApi<T1, T2>(inPipe: Observable<T1>, project: (result: T1) => T2, destroy$: Observable<void>): Observable<T2> {
+function getShareableFromApi$<T1, T2>(inPipe: Observable<T1>, project: (result: T1) => T2, destroy$: Observable<void>): Observable<T2> {
   return inPipe.pipe(
     map(project),
     shareReplay({ bufferSize: 1, refCount: true }),
@@ -119,6 +119,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   public weatherForecast$!: Observable<DailyForecast>;
   public weatherChange$!: Observable<string | null>;
   public wallpaperDescription$!: Observable<string>;
+  public timesInOtherZones$!: Observable<string[]>;
 
   public selectedItemSource$: Subject<ItemWithFeed | null> = new Subject<ItemWithFeed | null>();
   public selectedItem$!: Observable<ItemWithFeed | null>;
@@ -158,7 +159,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     const events$ = interval(240000).pipe(
       startWith(0),
-      switchMap(() => getFilteredCachedShareableFromApi('events', this.cal.fetchEvents(() => {
+      switchMap(() => getFilteredCachedShareableFromApi$('events', this.cal.fetchEvents(() => {
         this.showLogin$.next(true);
         localStorage.removeItem('access_token');
       }), r => r, this.destroy$)),
@@ -313,7 +314,7 @@ export class HomeComponent implements OnInit, OnDestroy {
           shareReplay({ bufferSize: 1, refCount: true }),
           takeUntil(this.destroy$),
         );
-      this.news$ = getFilteredCachedShareableFromApi('news', news$, r => r, this.destroy$);
+      this.news$ = getFilteredCachedShareableFromApi$('news', news$, r => r, this.destroy$);
     }
     const currentDate$ = interval(1000).pipe(
       startWith(0),
@@ -329,7 +330,20 @@ export class HomeComponent implements OnInit, OnDestroy {
       map(now => now.toLocaleDateString('en-AU')),
       takeUntil(this.destroy$),
     );
-    const weather$ = getShareableFromApi(
+
+    if ((this.config?.additionalTimezones?.length ?? 0) > 0) {
+      this.timesInOtherZones$ = currentDate$.pipe(
+        map(now => this.config.additionalTimezones!.map(tz =>
+          `${tz.name}: ${now.toLocaleDateString('en-AU', {timeZone: tz.timezone})} ${now.toLocaleTimeString('en-AU',  {
+            timeZone: tz.timezone,
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: false,
+          })}`)),
+        takeUntil(this.destroy$),
+      );
+    }
+    const weather$ = getShareableFromApi$(
       interval(360000)
         .pipe(
           startWith(0),
@@ -340,9 +354,9 @@ export class HomeComponent implements OnInit, OnDestroy {
           takeUntil(this.destroy$),
         ), r => r, this.destroy$);
 
-    this.weather$ = getFilteredCachedShareableFromApi('weather', weather$, r => r!.currently!, this.destroy$);
-    this.weatherForecast$ = getFilteredCachedShareableFromApi('weatherForecast', weather$, r => r!.daily!, this.destroy$);
-    this.weatherChange$ = getCachedShareableFromApi('weatherChange', weather$, v => {
+    this.weather$ = getFilteredCachedShareableFromApi$('weather', weather$, r => r!.currently!, this.destroy$);
+    this.weatherForecast$ = getFilteredCachedShareableFromApi$('weatherForecast', weather$, r => r!.daily!, this.destroy$);
+    this.weatherChange$ = getCachedShareableFromApi$('weatherChange', weather$, v => {
         if (v == null) return null;
         const time = new Date().getTime();
         const timePlus12 = (time + twelveHours) / 1000;
@@ -412,8 +426,8 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     issues$.subscribe({ error: err => this.onGqlError.next() });
 
-    this.myIssues$ = getFilteredCachedShareableFromApi('myIssues', issues$, v => (v?.repository?.assignedTo?.nodes ?? []).concat(v?.repository?.labeledEpic?.nodes ?? []), this.destroy$);
-    this.prs$ = getFilteredCachedShareableFromApi('prs', issues$, v => v?.repository?.pullRequests?.nodes ?? [], this.destroy$);
+    this.myIssues$ = getFilteredCachedShareableFromApi$('myIssues', issues$, v => (v?.repository?.assignedTo?.nodes ?? []).concat(v?.repository?.labeledEpic?.nodes ?? []), this.destroy$);
+    this.prs$ = getFilteredCachedShareableFromApi$('prs', issues$, v => v?.repository?.pullRequests?.nodes ?? [], this.destroy$);
   }
 
   public currentWeather(weather: CurrentWeather): string {

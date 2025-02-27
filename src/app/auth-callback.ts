@@ -35,7 +35,7 @@ export class AuthCallbackComponent implements OnInit, OnDestroy {
 
     this.route.queryParams
       .pipe(
-        filter( params => params != null && params['code'] != null),
+        filter(params => params != null && params['code'] != null),
         map(params => params['code']),
         switchMap(code => this.authService.getToken(code)),
         takeUntil(this.destroy$),

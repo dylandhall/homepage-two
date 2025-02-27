@@ -12,7 +12,7 @@
         width="32"
         src="{{card.iconUrl}}"/></button>
     </div>
-    <div class="time"><span class="date">{{date$|async}}</span>{{time$ | async}}</div>
+    <div class="time"><span class="date">{{date$ | async}}</span>{{time$ | async}}</div>
   </div>
 
   <div (click)="selectedItemSource$.next(null)">
@@ -71,14 +71,19 @@
       (click)="login()">📅
     </button>
 
-    <div class="weather"  *ngIf="weather$ | async as weather">
-      <div class="weather-label" style="margin-bottom: 2rem; cursor: pointer;" [matTooltip]="currentWeather(weather)" (click)="gotoWeather(weather)">
-        Now: {{Math.round(weather.temperature)}}°C <mat-icon style="margin-left: 1rem;">{{weatherIcons[weather.icon]}}</mat-icon>
+    <div class="weather">
+      <div *ngIf="timesInOtherZones$ | async as times" style="margin-bottom: 2rem;">
+        <div class="weather-label" *ngFor="let time of times">{{time}}</div>
       </div>
-      <div class="weather-label" *ngIf="weatherChange$ | async as change" style="margin-bottom: 0.3rem;">{{change}}</div>
-      <div *ngIf="weatherForecast$ | async as forecast" class="fade-out-div">
-        <div *ngFor="let day of forecast.data" [matTooltip]="getWeatherTooltip(day)">
-          {{getDayNameFromTimestamp(day.time)}}: {{Math.round(day.temperatureHigh)}}°C <mat-icon style="margin-left: 1rem;">{{weatherIcons[day.icon]}}</mat-icon>
+      <div *ngIf="weather$ | async as weather">
+        <div class="weather-label" style="margin-bottom: 2rem; cursor: pointer;" [matTooltip]="currentWeather(weather)" (click)="gotoWeather(weather)">
+          Now: {{Math.round(weather.temperature)}}°C <mat-icon style="margin-left: 1rem;">{{weatherIcons[weather.icon]}}</mat-icon>
+        </div>
+        <div class="weather-label" *ngIf="weatherChange$ | async as change" style="margin-bottom: 0.3rem;">{{change}}</div>
+        <div *ngIf="weatherForecast$ | async as forecast" class="fade-out-div">
+          <div *ngFor="let day of forecast.data" [matTooltip]="getWeatherTooltip(day)">
+            {{getDayNameFromTimestamp(day.time)}}: {{Math.round(day.temperatureHigh)}}°C <mat-icon style="margin-left: 1rem;">{{weatherIcons[day.icon]}}</mat-icon>
+          </div>
         </div>
       </div>
     </div>

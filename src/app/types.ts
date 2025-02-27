@@ -15,36 +15,38 @@ export interface IBookmark{
   iconUrl: string;
 }
 type KnownIconRecord = Record<string, string>;
+type TimezoneToDisplay = { timezone: string, name: string }; // offset in hours, description
 
 export interface IConfig {
-  rssSources: IRssSource[] | null;
-  knownIcons: KnownIconRecord | null;
-  weatherApiKey: string | null;
-  location: Point | null;
-  googleApi: IGoogleApi | null;
-  githubQuery: IGithubQuery | null;
-  rssApiKey: string | null;
+  rssSources?: IRssSource[] | null;
+  knownIcons?: KnownIconRecord | null;
+  weatherApiKey?: string | null;
+  location?: Point | null;
+  googleApi?: IGoogleApi | null;
+  githubQuery?: IGithubQuery | null;
+  rssApiKey?: string | null;
+  additionalTimezones?: TimezoneToDisplay[] | null;
 }
 
 export interface IWallpaper {
   description: string | null;
 }
-export interface IGoogleApi{
-  clientSecret:string;
-  clientId:string;
+export interface IGoogleApi {
+  clientSecret: string;
+  clientId: string;
 }
-export interface ILocation{
-  lat:number;
-  long:number;
+export interface ILocation {
+  lat: number;
+  long: number;
 }
 
-export interface IGithubQuery{
+export interface IGithubQuery {
   githubToken: string | null;
   owner:string;
   repo:string;
   username:string;
 }
-export interface IRssSource{
+export interface IRssSource {
   weight:number;
   url:string;
 }
