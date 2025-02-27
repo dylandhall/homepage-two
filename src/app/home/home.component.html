@@ -72,7 +72,7 @@
     </button>
 
     <div class="weather">
-      <div *ngIf="timesInOtherZones$ | async as times" style="margin-bottom: 2rem;">
+      <div *ngIf="timesInOtherZones$ | async as times" style="margin-bottom: 2rem; padding-right: 1rem;">
         <div class="weather-label" *ngFor="let time of times">{{time}}</div>
       </div>
       <div *ngIf="weather$ | async as weather">

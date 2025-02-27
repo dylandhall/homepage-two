@@ -334,7 +334,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     if ((this.config?.additionalTimezones?.length ?? 0) > 0) {
       this.timesInOtherZones$ = currentDate$.pipe(
         map(now => this.config.additionalTimezones!.map(tz =>
-          `${tz.name}: ${now.toLocaleDateString('en-AU', {timeZone: tz.timezone})} ${now.toLocaleTimeString('en-AU',  {
+          `${tz.name}: ${now.toLocaleDateString('en-AU', {timeZone: tz.timezone, day: '2-digit', month: '2-digit'})} ${now.toLocaleTimeString('en-AU',  {
             timeZone: tz.timezone,
             hour: 'numeric',
             minute: '2-digit',
