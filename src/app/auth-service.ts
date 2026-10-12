@@ -4,13 +4,17 @@ import {
   Injectable
 } from '@angular/core';
 import {
+  filter,
+  from,
   map,
   Observable,
   of,
   shareReplay,
+  switchMap,
   take,
-  tap
+  throwError
 } from 'rxjs';
+import { BROWSER_API } from './browser-api';
 import { ConfigService } from './config-service';
 import { IConfig } from './types';
 
@@ -33,18 +37,38 @@ interface IGetTokenRequestBody {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly redirectUri = 'http://localhost:9839/auth/callback';
-  //private redirectUri = 'http://localhost:4200/auth/callback';
   private readonly authEndpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
-  private readonly tokenEndpoint = 'https://www.googleapis.com/oauth2/v4/token';
+  private readonly tokenEndpoint = 'https://oauth2.googleapis.com/token';
   private http = inject(HttpClient);
+  private browserApi = inject(BROWSER_API);
   private readonly config:IConfig;
   constructor(private configService:ConfigService) {
     this.config = configService.getConfig();
   }
 
+  // Firefox's per-extension redirect URL (https://<hash>.extensions.allizom.org/), which must be
+  // registered as an authorised redirect URI on the Google OAuth client
+  public getRedirectUri(): string | null {
+    return this.browserApi?.identity.getRedirectURL() ?? null;
+  }
+
+  // Logs in through a Firefox popup, then reloads so the calendar picks up the new tokens
   authorize() {
-    window.location.href = `${this.authEndpoint}?client_id=${this.config.googleApi?.clientId}&redirect_uri=${this.redirectUri}&response_type=code&scope=https://www.googleapis.com/auth/calendar.readonly&access_type=offline&approval_prompt=force`;
+    const redirectUri = this.getRedirectUri();
+    if (this.browserApi == null || redirectUri == null) {
+      console.warn('Google login only works when running as the Firefox extension');
+      return;
+    }
+
+    const url = `${this.authEndpoint}?client_id=${this.config.googleApi?.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=https://www.googleapis.com/auth/calendar.readonly&access_type=offline&prompt=consent`;
+    from(this.browserApi.identity.launchWebAuthFlow({ url, interactive: true })).pipe(
+      map(responseUrl => new URL(responseUrl).searchParams.get('code')),
+      filter((code): code is string => code != null),
+      switchMap(code => this.getToken(code, redirectUri)),
+    ).subscribe({
+      next: () => location.reload(),
+      error: err => console.error('Google login failed', err),
+    });
   }
 
   public checkTokenExpiryAndRefresh(): Observable<string> {
@@ -71,9 +95,9 @@ export class AuthService {
     const refreshToken = localStorage.getItem('refresh_token');
     if (!refreshToken) {
       localStorage.removeItem('access_token');
-      throw new Error('No refresh token found');
+      return throwError(() => new Error('No refresh token found'));
     }
-    if (this.config.googleApi?.clientId == null || this.config.googleApi?.clientSecret == null) throw new Error('No google client details available');
+    if (this.config.googleApi?.clientId == null || this.config.googleApi?.clientSecret == null) return throwError(() => new Error('No google client details available'));
 
 
     const body: IRefreshTokenRequestBody = {
@@ -86,14 +110,14 @@ export class AuthService {
     return this.getToken$(body);
   }
 
-  public getToken(code: string): Observable<IToken> {
-    if (this.config.googleApi?.clientId == null || this.config.googleApi?.clientSecret == null) throw new Error('No google client details available');
+  public getToken(code: string, redirectUri: string): Observable<IToken> {
+    if (this.config.googleApi?.clientId == null || this.config.googleApi?.clientSecret == null) return throwError(() => new Error('No google client details available'));
 
     const body: IGetTokenRequestBody = {
       code: code,
       client_id: this.config.googleApi?.clientId??'',
       client_secret: this.config.googleApi?.clientSecret??'',
-      redirect_uri: this.redirectUri,
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code'
     };
     return this.getToken$(body);

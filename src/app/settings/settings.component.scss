@@ -1,0 +1,46 @@
+.settings {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  max-width: 60rem;
+  height: calc(100vh - 4rem);
+  margin: 2rem auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  box-shadow: 2px 2px 6px 0px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.9);
+  color: #9d9d9d;
+  font-family: "JetBrains Mono", "Roboto", sans-serif;
+
+  h2 {
+    margin-top: 0;
+    color: white;
+  }
+
+  code {
+    color: lightblue;
+    user-select: all;
+  }
+
+  textarea {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #555;
+    background: #111;
+    color: #ddd;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10pt;
+    resize: none;
+  }
+
+  .error {
+    color: salmon;
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+}

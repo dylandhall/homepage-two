@@ -1,0 +1,22 @@
+<div class="settings">
+  <h2>Settings</h2>
+  <p>
+    API keys and options as JSON, in the same shape as <code>src/config-example.json</code>.
+    They're kept in this extension's storage in your Firefox profile.
+  </p>
+  @if (redirectUri) {
+    <p>Google OAuth redirect URI to add to your client: <code>{{redirectUri}}</code></p>
+  }
+  <textarea spellcheck="false"
+    [value]="configJson()"
+    (input)="configJson.set($any($event.target).value); error.set(null)"></textarea>
+  @if (error()) {
+    <p class="error">{{error()}}</p>
+  }
+  <div class="buttons">
+    @if (!isFirstRun) {
+      <button mat-button (click)="closed.emit()">Cancel</button>
+    }
+    <button mat-flat-button (click)="save()">Save</button>
+  </div>
+</div>

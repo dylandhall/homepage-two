@@ -85,6 +85,8 @@ div {
 
   width: fit-content;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #808080 #F5F5F5;
   margin: 10px;
   border: 1px solid #ccc;
   box-shadow: 2px 2px 6px 0px rgba(0, 0, 0, 0.3);
@@ -211,4 +213,14 @@ div {
   overflow-y: hidden;
   -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent);
   mask-image: linear-gradient(to bottom, black 75%, transparent);
+}
+
+.settings-button {
+  align-self: center;
+  opacity: 0.2;
+  transition: opacity 0.1s ease-in-out;
+
+  &:hover {
+    opacity: 1;
+  }
 }

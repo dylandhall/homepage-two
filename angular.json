@@ -1,13 +1,27 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
+  "cli": {
+    "packageManager": "npm",
+    "analytics": false
+  },
   "newProjectRoot": "projects",
   "projects": {
     "home-two": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
-          "style": "scss"
+          "style": "scss",
+          "type": "component",
+          "addTypeToClassName": false
+        },
+        "@schematics/angular:directive": {
+          "type": "directive",
+          "addTypeToClassName": false
+        },
+        "@schematics/angular:service": {
+          "type": "service",
+          "addTypeToClassName": false
         }
       },
       "root": "",
@@ -15,106 +29,80 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:browser",
+          "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/home-two",
-            "index": "src/index.html",
-            "main": "src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
+            "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
-              "src/favicon.ico",
-              "src/assets",
-              "src/Bookmarks",
-              "src/background.css",
-              "src/config.json"
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
             ],
             "styles": [
               "@angular/material/prebuilt-themes/pink-bluegrey.css",
               "src/styles.scss"
-            ],
-            "scripts": []
+            ]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "1mb"
+                  "maximumWarning": "600kB",
+                  "maximumError": "1MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
                 }
               ],
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": true
+              },
               "outputHashing": "all"
             },
             "development": {
               "assets": [
-                "src/favicon.ico",
-                "src/assets",
-                "src/Bookmarks",
-                "src/background.css",
-                "src/config.json",
-                "src/wallpaper.jpg"
+                {
+                  "glob": "**/*",
+                  "input": "public"
+                },
+                {
+                  "glob": "{config.json,bookmarks.json,wallpaper.jpg}",
+                  "input": "src"
+                }
               ],
-              "buildOptimizer": false,
               "optimization": false,
-              "vendorChunk": true,
               "extractLicenses": false,
-              "sourceMap": true,
-              "namedChunks": true
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
+          "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "home-two:build:production"
+              "buildTarget": "home-two:build:production"
             },
             "development": {
-              "browserTarget": "home-two:build:development"
+              "buildTarget": "home-two:build:development"
             }
           },
           "defaultConfiguration": "development"
         },
-        "extract-i18n": {
-          "builder": "@angular-devkit/build-angular:extract-i18n",
-          "options": {
-            "browserTarget": "home-two:build"
-          }
-        },
         "test": {
-          "builder": "@angular-devkit/build-angular:karma",
-          "options": {
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
-            "tsConfig": "tsconfig.spec.json",
-            "inlineStyleLanguage": "scss",
-            "assets": [
-              "src/favicon.ico",
-              "src/assets"
-            ],
-            "styles": [
-              "@angular/material/prebuilt-themes/pink-bluegrey.css",
-              "src/styles.scss"
-            ],
-            "scripts": []
-          }
+          "builder": "@angular/build:unit-test"
         }
       }
     }
-  },
-  "cli": {
-    "analytics": "9cd3a4b3-cf42-404e-ae51-5f136fe9bcd2"
   }
 }

@@ -1,18 +1,8 @@
 
 
-export interface IBookmarksFile{
-  roots: IRoots;
-}
-export interface IRoots {
-  bookmark_bar: IBookmarkBar;
-}
-export interface IBookmarkBar{
-  children: IBookmark[];
-}
 export interface IBookmark{
   url: string;
   name: string;
-  iconUrl: string;
 }
 type KnownIconRecord = Record<string, string>;
 type TimezoneToDisplay = { timezone: string, name: string }; // offset in hours, description
@@ -28,9 +18,6 @@ export interface IConfig {
   additionalTimezones?: TimezoneToDisplay[] | null;
 }
 
-export interface IWallpaper {
-  description: string | null;
-}
 export interface IGoogleApi {
   clientSecret: string;
   clientId: string;

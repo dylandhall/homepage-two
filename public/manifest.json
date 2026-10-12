@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Home Two",
+  "version": "1.0.0",
+  "description": "Personal new tab page: bookmarks, calendar, GitHub issues and PRs, weather, news and the Bing image of the day.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "home-two@dylandhall.github.io",
+      "strict_min_version": "128.0"
+    }
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "chrome_settings_overrides": {
+    "homepage": "index.html"
+  },
+  "permissions": [
+    "bookmarks",
+    "identity",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.bing.com/*",
+    "https://api.github.com/*",
+    "https://api.pirateweather.net/*",
+    "https://api.rss2json.com/*",
+    "https://www.googleapis.com/*",
+    "https://oauth2.googleapis.com/*"
+  ]
+}

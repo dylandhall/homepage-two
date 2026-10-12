@@ -1,11 +1,5 @@
-import {
-  gql,
-  TypedDocumentNode
-} from "apollo-angular";
-import { IRepository } from './github-types';
-
-export function getCustomisedQueries(owner:string, repo:string, username:string): TypedDocumentNode<IRepository, unknown> {
-  return gql`{
+export function getCustomisedQueries(owner:string, repo:string, username:string): string {
+  return `{
     repository(name: "${repo}", owner: "${owner}") {
       assignedTo: issues(filterBy: {assignee: "${username}", states: OPEN}, first: 10, orderBy: {field: CREATED_AT, direction: DESC}) {
         nodes {

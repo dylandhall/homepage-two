@@ -1,16 +1,17 @@
 # Homepage project (number two)
 
-This is a small project I made so my new tab page is a bit more customised. I have updated my chrome flags (chrome://flags/#custom-ntp) to let me set the new tab page, a tiny webserver running as a windows service to hand it to me, and a bunch of API keys to let it show me issues and PRs from github, some news RSS feeds, the weather and a nice wallpaper.
+This is a small project I made so my new tab page is a bit more customised. It's a Firefox extension that replaces the new tab page, and a bunch of API keys let it show me issues and PRs from github, my calendar, some news RSS feeds, the weather and a nice wallpaper.
 
 It's ridiculous but I like it so I'm checking it in so I can set it up again easily elsewhere. If someone else uses any of this, you're welcome.
 
 * Weather is from https://pirate-weather.apiable.io/
 * Rss2json is from https://rss2json.com/
-* Google API used for the calendar
-* Github graphQl via Apollo used for their API
-* Bing images downloaded by a script running as a task
-* Webserver is a wrapper I wrote running as a service for miniserve, see MiniserveWrapper folder
-* CopyFiles.ps1 runs as part of the NPM build to make updating easy, update as you see fit
+* Google API used for the calendar, logging in through Firefox's identity API
+* Github GraphQL API for issues and PRs
+* Bookmark cards are the Firefox Bookmarks Toolbar
+* Wallpaper is the Bing image of the day, loaded straight from Bing
+
+It was originally a website served locally on Windows (with Windows services for the webserver, bookmark sync and wallpaper download); that version is in the git history before the Angular 22 upgrade.
 
 ## Screenshot
 
@@ -18,30 +19,44 @@ It's ridiculous but I like it so I'm checking it in so I can set it up again eas
 
 Note I've since added times in many timezones, not pictured.
 
-## HomeTwo
+## Building
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 16.2.6.
+```
+npm install
+npm run build
+```
 
-### Development server
+This builds the Angular app and packages it as `dist/home-two.xpi`. `npm run lint:extension` checks it with Mozilla's linter.
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+## Installing in Firefox
 
-### Code scaffolding
+The extension isn't signed or listed on addons.mozilla.org, so there are two ways to load it.
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+**To try it out:** open `about:debugging#/runtime/this-firefox`, choose "Load Temporary Add-on…" and pick `dist/home-two/browser/manifest.json`. It stays until Firefox restarts (and its saved settings go with it).
 
-### Build
+**To keep it:** Arch and CachyOS build Firefox to accept unsigned extensions installed in its application folder, so
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+```
+npm run install-extension
+```
 
-### Running unit tests
+copies the xpi to `/usr/lib/firefox/browser/extensions/` (with sudo) and sets `extensions.startupScanScopes` so Firefox picks up installs and updates on restart. After a rebuild, run it again and restart Firefox. To remove it, delete `/usr/lib/firefox/browser/extensions/home-two@dylandhall.github.io.xpi` and `/usr/lib/firefox/browser/defaults/preferences/home-two.js`.
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+Firefox asks once whether to keep the new tab page the extension sets; keep it.
 
-### Running end-to-end tests
+## Settings
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+On first run the page opens its settings: paste your config JSON, in the shape of `src/config-example.json`. It's stored in the extension's storage in your Firefox profile, never in the package. The ⚙ button at the end of the bookmarks reopens it.
 
-### Further help
+* `githubQuery.githubToken` needs a token that can read the repo's issues and PRs. The issues and PRs shown are set by the GraphQL query in `src/app/github-constants.ts`.
+* For the calendar, add the redirect URI shown on the settings page (`https://<id>.extensions.allizom.org/`, fixed for this extension) as an authorised redirect URI on your Google OAuth client.
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+## Development
+
+Run `npm start` for a dev server on `http://localhost:4200/`. Outside the extension there's no bookmarks or identity API and Bing's JSON isn't readable, so it uses the example `src/bookmarks.json` and `src/wallpaper.jpg`, loads settings from `src/config.json` (gitignored, copy the example) and Google login is disabled.
+
+`npm run watch` builds the extension unminified into `dist/home-two/browser` on every change, including `src/config.json` so a temporary add-on picks up your settings; use "Reload" in `about:debugging` to load the changes.
+
+Run `npm test` to run the unit tests with [Vitest](https://vitest.dev). The script disables Node's built-in `localStorage` (Node 25+), which otherwise hides jsdom's.
+
+This project uses [Angular](https://angular.dev) 22.
