@@ -11,10 +11,7 @@ import {
   OnInit,
   output,
 } from '@angular/core';
-import {
-  MatFabButton,
-  MatMiniFabButton
-} from '@angular/material/button';
+import { MatFabButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import {
@@ -100,7 +97,7 @@ function getShareableFromApi$<T1, T2>(inPipe: Observable<T1>, project: (result: 
 
 @Component({
   selector: 'app-home',
-  imports: [AsyncPipe, NgTemplateOutlet, MatFabButton, MatMiniFabButton, MatIcon, MatTooltip],
+  imports: [AsyncPipe, NgTemplateOutlet, MatFabButton, MatIcon, MatTooltip],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
