@@ -2,9 +2,13 @@ import {
   inject,
   Injectable
 } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse
+} from '@angular/common/http';
 import {
   catchError,
+  EMPTY,
   filter,
   from,
   map,
@@ -13,8 +17,14 @@ import {
   of,
   scan,
   switchMap,
+  throwError,
 } from 'rxjs';
-import { AuthService } from './auth-service';
+import {
+  AuthService,
+  LoginRequiredError
+} from './auth-service';
+
+const isUnauthorised = (err: unknown) => err instanceof HttpErrorResponse && err.status === 401;
 
 @Injectable({
   providedIn: 'root'
@@ -24,46 +34,48 @@ export class GoogleCalendarService {
   private apiUrl = 'https://www.googleapis.com/calendar/v3/calendars';
 
   constructor(private http: HttpClient, private authService: AuthService) { }
-  public fetchEvents(onFail: () => void): Observable<IEvent[]> {
-    const token = localStorage.getItem('access_token');
-    if (token == null) {
-      onFail();
-      return of(<IEvent[]>[]);
-    }
 
+  // Events in the next 48 hours from the calendars you own or can edit. onLoginRequired is only called when
+  // there's no way to get an access token without logging in again; any other failure emits nothing, so the
+  // cached events stay on screen and the next poll tries again with the same tokens.
+  public fetchEvents(onLoginRequired: () => void): Observable<IEvent[]> {
+    return this.authService.getAccessToken().pipe(
+      switchMap(token => this.fetchEventsWithToken(token)),
+      // Google can stop accepting an access token before it expires, so get a new one and try once more
+      catchError(err => isUnauthorised(err)
+        ? this.authService.getAccessToken(true).pipe(switchMap(token => this.fetchEventsWithToken(token)))
+        : throwError(() => err)),
+      catchError(err => {
+        if (err instanceof LoginRequiredError) onLoginRequired();
+        else console.warn('Could not load calendar events, trying again on the next poll', err);
+        return EMPTY;
+      }),
+    );
+  }
+
+  private fetchEventsWithToken(token: string): Observable<IEvent[]> {
+    const headers = { 'Authorization': `Bearer ${token}` };
     const now = new Date();
-    const fortyEightHours = 48 * 60 * 60 * 1000; // 12 hours in milliseconds
+    const fortyEightHours = 48 * 60 * 60 * 1000;
 
     const timeMax = new Date(now.getTime() + fortyEightHours);
-    return this.authService.checkTokenExpiryAndRefresh().pipe(
-      catchError(() => {console.log('hit error'); onFail(); return of(''); }),
-      filter(v => v != null && v != ''),
-      map(token => ({
-        'Authorization': `Bearer ${token}`,
-      })),
-      switchMap(headers =>
-        this.http.get<ICalendars>(this.listApiUrl, {headers}).pipe(
-          catchError(() => {onFail(); return of({} as ICalendars); }),
-          filter(v => v?.items?.length > 0),
-          switchMap(r =>
-            from(r.items.filter(i => i.accessRole === 'owner' || i.summary.indexOf('@') === -1)).pipe(
-              mergeMap(c =>
-                this.http.get<IEvents>(`${this.apiUrl}/${c.id}/events?timeMin=${now.toISOString()}&timeMax=${timeMax.toISOString()}&singleEvents=true`, {headers}).pipe(
-                  catchError(() => {
-                    onFail();
-                    return of({} as IEvents);
-                  }),
-                  filter(v => v?.items?.length>0),
-                  map(v => v.items),
-                )
-              ),
-              scan((acc, result) => ([...acc, ...result]), <IEvent[]>[]),
-              map(v => {
-                v.sort((a,b) => ((a.start?.dateTime??a.start?.date??'')?.localeCompare(b.start?.dateTime??b.start?.date??''))??0);
-                return v;
-              })
+    return this.http.get<ICalendars>(this.listApiUrl, {headers}).pipe(
+      filter(v => v?.items?.length > 0),
+      switchMap(r =>
+        from(r.items.filter(i => i.accessRole === 'owner' || i.summary.indexOf('@') === -1)).pipe(
+          mergeMap(c =>
+            this.http.get<IEvents>(`${this.apiUrl}/${encodeURIComponent(c.id)}/events?timeMin=${now.toISOString()}&timeMax=${timeMax.toISOString()}&singleEvents=true`, {headers}).pipe(
+              // skip a calendar that won't load, unless it's the token that's the problem
+              catchError(err => isUnauthorised(err) ? throwError(() => err) : of({} as IEvents)),
+              filter(v => v?.items?.length>0),
+              map(v => v.items),
             )
-          )
+          ),
+          scan((acc, result) => ([...acc, ...result]), <IEvent[]>[]),
+          map(v => {
+            v.sort((a,b) => ((a.start?.dateTime??a.start?.date??'')?.localeCompare(b.start?.dateTime??b.start?.date??''))??0);
+            return v;
+          })
         )
       )
     );

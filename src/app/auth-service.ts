@@ -1,17 +1,20 @@
-import { HttpClient } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse
+} from '@angular/common/http';
 import {
   inject,
   Injectable
 } from '@angular/core';
 import {
+  catchError,
   filter,
   from,
   map,
   Observable,
   of,
-  shareReplay,
   switchMap,
-  take,
+  tap,
   throwError
 } from 'rxjs';
 import { BROWSER_API } from './browser-api';
@@ -32,6 +35,13 @@ interface IGetTokenRequestBody {
   redirect_uri: string;
   grant_type: string;
 }
+
+// There's no usable refresh token (never logged in, or Google rejected it), so the user has to log in again.
+// Other errors (offline, Google having a moment) are worth retrying later with the same tokens.
+export class LoginRequiredError extends Error {}
+
+// refresh a little before the access token actually expires
+const expiryMarginMs = 60_000;
 
 @Injectable({
   providedIn: 'root'
@@ -71,21 +81,16 @@ export class AuthService {
     });
   }
 
-  public checkTokenExpiryAndRefresh(): Observable<string> {
+  // A current access token, using the refresh token to get a new one when it's missing, (nearly) expired,
+  // or forceRefresh is set because Google turned it down. Errors with LoginRequiredError if that's not possible.
+  public getAccessToken(forceRefresh = false): Observable<string> {
     const token = localStorage.getItem('access_token');
     const expiry = localStorage.getItem('token_expiry');
 
-    if (token && expiry) {
-      const now = new Date();
-      const expiryDate = new Date(expiry);
-
-      // If the token is still valid, return it
-      if (now < expiryDate) {
-        return of(token);
-      }
+    if (!forceRefresh && token && expiry && Date.now() < new Date(expiry).getTime() - expiryMarginMs) {
+      return of(token);
     }
 
-    // If there's no token or it has expired, refresh it
     return this.refreshToken().pipe(
       map(res => res.access_token)
     );
@@ -93,12 +98,8 @@ export class AuthService {
 
   public refreshToken(): Observable<IToken> {
     const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) {
-      localStorage.removeItem('access_token');
-      return throwError(() => new Error('No refresh token found'));
-    }
-    if (this.config.googleApi?.clientId == null || this.config.googleApi?.clientSecret == null) return throwError(() => new Error('No google client details available'));
-
+    if (!refreshToken) return throwError(() => new LoginRequiredError('No refresh token found'));
+    if (this.config.googleApi?.clientId == null || this.config.googleApi?.clientSecret == null) return throwError(() => new LoginRequiredError('No google client details available'));
 
     const body: IRefreshTokenRequestBody = {
       refresh_token: refreshToken,
@@ -107,7 +108,22 @@ export class AuthService {
       grant_type: 'refresh_token'
     };
 
-    return this.getToken$(body);
+    return this.getToken$(body).pipe(
+      catchError(err => {
+        // 400 invalid_grant: the refresh token expired or was revoked; 401: the client id/secret is wrong
+        if (err instanceof HttpErrorResponse && (err.status === 400 || err.status === 401)) {
+          this.clearTokens();
+          return throwError(() => new LoginRequiredError(`Google refused the refresh token: ${err.error?.error ?? err.status}`));
+        }
+        return throwError(() => err);
+      }),
+    );
+  }
+
+  public clearTokens(): void {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('token_expiry');
   }
 
   public getToken(code: string, redirectUri: string): Observable<IToken> {
@@ -123,22 +139,19 @@ export class AuthService {
     return this.getToken$(body);
   }
 
-  private getToken$(body: IRefreshTokenRequestBody | IGetTokenRequestBody) {
-    const observable$ = this.http.post<IToken>(this.tokenEndpoint, body).pipe(
-      shareReplay({ refCount: true, bufferSize: 1 }),
-      take(1),
+  private getToken$(body: IRefreshTokenRequestBody | IGetTokenRequestBody): Observable<IToken> {
+    return this.http.post<IToken>(this.tokenEndpoint, body).pipe(
+      tap(res => {
+        localStorage.setItem('access_token', res.access_token);
+        // Google only sends a refresh token on login; refreshing keeps using the same one
+        if (res.refresh_token) localStorage.setItem('refresh_token', res.refresh_token);
+
+        // Calculate the expiry time and store it
+        const expiryDate = new Date();
+        expiryDate.setSeconds(expiryDate.getSeconds() + res.expires_in);
+        localStorage.setItem('token_expiry', expiryDate.toISOString());
+      }),
     );
-
-    observable$.subscribe(res => {
-      localStorage.setItem('access_token', res.access_token);
-      if (res.refresh_token) localStorage.setItem('refresh_token', res.refresh_token);
-
-      // Calculate the expiry time and store it
-      const expiryDate = new Date();
-      expiryDate.setSeconds(expiryDate.getSeconds() + res.expires_in);
-      localStorage.setItem('token_expiry', expiryDate.toISOString());
-    });
-    return observable$;
   }
 }
 interface IToken{

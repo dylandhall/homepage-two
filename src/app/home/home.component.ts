@@ -161,10 +161,9 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     const events$ = interval(240000).pipe(
       startWith(0),
-      switchMap(() => getFilteredCachedShareableFromApi$('events', this.cal.fetchEvents(() => {
-        this.showLogin$.next(true);
-        localStorage.removeItem('access_token');
-      }), r => r, this.destroy$)),
+      switchMap(() => getFilteredCachedShareableFromApi$('events', this.cal.fetchEvents(
+        () => this.showLogin$.next(true),
+      ), r => r, this.destroy$)),
       map(v => {
         const now = new Date();
         return v?.filter(e => e.start?.dateTime != null && new Date(e.end.dateTime) >= now);
