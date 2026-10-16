@@ -1,1 +1,5 @@
-<router-outlet></router-outlet>
+@if (showSettings()) {
+  <app-settings (closed)="showSettings.set(false)"/>
+} @else {
+  <app-home (openSettings)="showSettings.set(true)"/>
+}

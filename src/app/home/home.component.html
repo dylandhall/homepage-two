@@ -1,117 +1,170 @@
 <div class="page-container">
   <div (click)="selectedItemSource$.next(null)">
     <div class="cards">
+      @for (card of cards$ | async; track card.url) {
+        <button mat-fab
+          class="card"
+          (click)="goto(card.url)"
+          matTooltipPosition="below"
+          [matTooltip]="card.name">
+          @if (card.iconIndex < card.icons.length) {
+            <img alt="{{card.name}}"
+              height="32"
+              width="32"
+              [src]="card.icons[card.iconIndex]"
+              (load)="onIconLoad(card, $event)"
+              (error)="nextIcon(card)"/>
+          } @else {
+            <span class="letter-icon" [style.background-color]="letterColour(card.name)">{{card.name.charAt(0)}}</span>
+          }
+        </button>
+      }
       <button mat-fab
-        class="card"
-        [color]=""
-        (click)="goto(card.url)"
+        class="card settings-button"
+        matTooltip="Settings"
         matTooltipPosition="below"
-        [matTooltip]="card.name"
-        *ngFor="let card of cards$ | async"><img alt="{{card.name}}"
-        height="32"
-        width="32"
-        src="{{card.iconUrl}}"/></button>
+        (click)="openSettings.emit()"><mat-icon>settings</mat-icon></button>
     </div>
     <div class="time"><span class="date">{{date$ | async}}</span>{{time$ | async}}</div>
   </div>
 
   <div (click)="selectedItemSource$.next(null)">
-    <div class="issues" *ngIf="myIssues$ | async as issues">
-      <div *ngIf="issues?.length == 0">No issues found</div>
-      <div *ngFor="let issue of issues">
-        <a href="{{issue.url}}">{{issue.title}}</a><br/>
-        <span>#{{issue.number}}</span>&nbsp;&nbsp;<span *ngFor="let label of issue.labels.nodes"
-        class="label"
-        [ngStyle]="{'background-color': '#' + label.color}"><span [ngStyle]="{'color': '#' + label.color}">{{label.name}}</span></span>
-      </div>
-    </div>
-
-    <div class="issues" *ngIf="prs$ | async as prs">
-      <div *ngIf="prs?.length == 0">No current pull requests</div>
-      <div *ngFor="let issue of prs">
-        <a href="{{issue.url}}">{{issue.title}}</a><br/><span>{{issue.author.login}} - {{issue.files.totalCount}} files</span>
-      </div>
-    </div>
-
-    <div class="issues" *ngIf="(showEvents$ | async) && !(showLogin$ | async)">
-      <div *ngIf="noEvents$ | async">No current events</div>
-
-      <div *ngFor="let event of todayEvents$ | async">
-        <a *ngIf="event?.summary != null && event?.htmlLink != null"
-          target="_blank"
-          href="{{event.htmlLink}}">{{event.summary}}</a><br/><span *ngIf="event?.start?.dateTime != null || event?.start?.date != null">{{getDateStr(event.start.dateTime ?? event.start.date ?? '', event.start.dateTime == null)}}</span>
-      </div>
-
-      <ng-container *ngIf="tomorrowEvents$ | async as events">
-        <ng-container *ngIf="(events?.length??0)>0">
-          <div><b>Tomorrow</b></div>
-          <div *ngFor="let event of events">
-            <a *ngIf="event?.summary != null && event?.htmlLink != null"
-              target="_blank"
-              href="{{event.htmlLink}}">{{event.summary}}</a><br/><span *ngIf="event?.start?.dateTime != null || event?.start?.date != null">{{getDateStr(event.start.dateTime ?? event.start.date ?? '', event.start.dateTime == null)}}</span>
+    @if (myIssues$ | async; as issues) {
+      <div class="issues">
+        @for (issue of issues; track issue.id) {
+          <div>
+            <a href="{{issue.url}}">{{issue.title}}</a><br/>
+            <span>#{{issue.number}}</span>&nbsp;&nbsp;@for (label of issue.labels.nodes; track label.name) {<span
+              class="label"
+              [style.background-color]="'#' + label.color"><span [style.color]="'#' + label.color">{{label.name}}</span></span>}
           </div>
-        </ng-container>
-      </ng-container>
+        } @empty {
+          <div>No issues found</div>
+        }
+      </div>
+    }
 
-      <ng-container *ngIf="laterEvents$ | async as events">
-        <ng-container *ngIf="(events?.length??0)>0">
-          <div><b>Later</b></div>
-          <div *ngFor="let event of events">
-            <a *ngIf="event?.summary != null && event?.htmlLink != null"
-              target="_blank"
-              href="{{event.htmlLink}}">{{event.summary}}</a><br/><span *ngIf="event?.start?.dateTime != null || event?.start?.date != null">{{getDateStr(event.start.dateTime ?? event.start.date ?? '', event.start.dateTime == null)}}</span>
+    @if (prs$ | async; as prs) {
+      <div class="issues">
+        @for (issue of prs; track issue.url) {
+          <div>
+            <a href="{{issue.url}}">{{issue.title}}</a><br/><span>{{issue.author.login}} - {{issue.files.totalCount}} files</span>
           </div>
-        </ng-container>
-      </ng-container>
-    </div>
+        } @empty {
+          <div>No current pull requests</div>
+        }
+      </div>
+    }
 
-    <button *ngIf="showLogin$ | async"
-      style="margin: 4rem;"
-      mat-fab
-      (click)="login()">📅
-    </button>
+    @if ((showEvents$ | async) && !(showLogin$ | async)) {
+      <div class="issues">
+        @if (noEvents$ | async) {
+          <div>No current events</div>
+        }
+
+        @for (event of todayEvents$ | async; track event.id) {
+          <ng-container *ngTemplateOutlet="eventTemplate; context: {$implicit: event}"/>
+        }
+
+        @if (tomorrowEvents$ | async; as events) {
+          @if (events.length > 0) {
+            <div><b>Tomorrow</b></div>
+            @for (event of events; track event.id) {
+              <ng-container *ngTemplateOutlet="eventTemplate; context: {$implicit: event}"/>
+            }
+          }
+        }
+
+        @if (laterEvents$ | async; as events) {
+          @if (events.length > 0) {
+            <div><b>Later</b></div>
+            @for (event of events; track event.id) {
+              <ng-container *ngTemplateOutlet="eventTemplate; context: {$implicit: event}"/>
+            }
+          }
+        }
+      </div>
+    }
+
+    <ng-template #eventTemplate let-event>
+      <div>
+        @if (event.summary != null && event.htmlLink != null) {
+          <a target="_blank" href="{{event.htmlLink}}">{{event.summary}}</a>
+        }<br/>
+        @if (event.start?.dateTime != null || event.start?.date != null) {
+          <span>{{getDateStr(event.start.dateTime ?? event.start.date ?? '', event.start.dateTime == null)}}</span>
+        }
+      </div>
+    </ng-template>
+
+    @if (showLogin$ | async) {
+      <button
+        style="margin: 4rem;"
+        mat-fab
+        (click)="login()">📅
+      </button>
+    }
 
     <div class="weather">
-      <div *ngIf="timesInOtherZones$ | async as times" style="margin-bottom: 2rem; padding-right: 1rem;">
-        <div class="weather-label" *ngFor="let time of times">{{time}}</div>
-      </div>
-      <div *ngIf="weather$ | async as weather">
-        <div class="weather-label" style="margin-bottom: 2rem; cursor: pointer;" [matTooltip]="currentWeather(weather)" (click)="gotoWeather(weather)">
-          Now: {{Math.round(weather.temperature)}}°C <mat-icon style="margin-left: 1rem;">{{weatherIcons[weather.icon]}}</mat-icon>
+      @if (timesInOtherZones$ | async; as times) {
+        <div style="margin-bottom: 2rem; padding-right: 1rem;">
+          @for (time of times; track $index) {
+            <div class="weather-label">{{time}}</div>
+          }
         </div>
-        <div class="weather-label" *ngIf="weatherChange$ | async as change" style="margin-bottom: 0.3rem;">{{change}}</div>
-        <div *ngIf="weatherForecast$ | async as forecast" class="fade-out-div">
-          <div *ngFor="let day of forecast.data" [matTooltip]="getWeatherTooltip(day)">
-            {{getDayNameFromTimestamp(day.time)}}: {{Math.round(day.temperatureHigh)}}°C <mat-icon style="margin-left: 1rem;">{{weatherIcons[day.icon]}}</mat-icon>
+      }
+      @if (weather$ | async; as weather) {
+        <div>
+          <div class="weather-label" style="margin-bottom: 2rem; cursor: pointer;" [matTooltip]="currentWeather(weather)" (click)="gotoWeather(weather)">
+            Now: {{Math.round(weather.temperature)}}°C <mat-icon style="margin-left: 1rem;">{{weatherIcons[weather.icon]}}</mat-icon>
           </div>
+          @if (weatherChange$ | async; as change) {
+            <div class="weather-label" style="margin-bottom: 0.3rem;">{{change}}</div>
+          }
+          @if (weatherForecast$ | async; as forecast) {
+            <div class="fade-out-div">
+              @for (day of forecast.data; track day.time) {
+                <div [matTooltip]="getWeatherTooltip(day)">
+                  {{getDayNameFromTimestamp(day.time)}}: {{Math.round(day.temperatureHigh)}}°C <mat-icon style="margin-left: 1rem;">{{weatherIcons[day.icon]}}</mat-icon>
+                </div>
+              }
+            </div>
+          }
         </div>
-      </div>
+      }
     </div>
   </div>
   <div>
-    <div class="articles"
-      [ngClass]="{'issue': (selectedItem$ | async) != null}"
-      *ngIf="news$ | async as news">
-      <div *ngFor="let item of news">
-        <a (click)="selectedItemSource$.next(item)"
-          [matTooltip]="item.title"
-          class="truncate">{{item.title}}</a><br/>
-        <span></span>
+    @if (news$ | async; as news) {
+      <div class="articles" [class.issue]="(selectedItem$ | async) != null">
+        @for (item of news; track item.link) {
+          <div>
+            <a (click)="selectedItemSource$.next(item)"
+              [matTooltip]="item.title"
+              class="truncate">{{item.title}}</a><br/>
+            <span></span>
+          </div>
+        }
       </div>
-    </div>
-    <div class="article" *ngIf="selectedItem$ | async as item" [ngClass]="{'initial': noItemAfterDelay$ | async}">
-      <div>
-        <div class="article-heading">
-          <a href="{{item.link}}">{{item.title}}</a>
-<!--          <div style="display: flex; flex-direction: row;">-->
-<!--            <button mat-mini-fab (click)="selectedItemSource$.next(null)"><b>X</b></button>-->
-<!--          </div>-->
+    }
+    @if (selectedItem$ | async; as item) {
+      <div class="article" [class.initial]="noItemAfterDelay$ | async">
+        <div>
+          <div class="article-heading">
+            <a href="{{item.link}}">{{item.title}}</a>
+          </div>
+          @if (item.feed?.link != null) {
+            <div><small><a href="{{item.feed.link}}">{{item.feed.title}}</a></small></div>
+          }
+          @if (item.enclosure?.type?.substring(0, 5) === 'image') {
+            <img alt="enc" src="{{item.enclosure?.link ?? ''}}"/>
+          }
+          <div [innerHTML]="item.content"></div>
         </div>
-        <div *ngIf="item?.feed?.link!=null"><small><a href="{{item.feed.link}}">{{item.feed.title}}</a></small></div>
-        <img alt="enc" *ngIf="(item?.enclosure?.type?.substring(0,5)) === 'image'" src="{{item.enclosure?.link??''}}"/>
-        <div [innerHTML]="item.content"></div>
       </div>
-    </div>
-    <div class="wallpaper-description" (click)="selectedItemSource$.next(null)" *ngIf="wallpaperDescription$|async as desc">{{desc}}</div>
+    }
+    @if (wallpaperDescription$ | async; as desc) {
+      <div class="wallpaper-description" (click)="selectedItemSource$.next(null)">{{desc}}</div>
+    }
   </div>
 </div>

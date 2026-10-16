@@ -1,17 +1,24 @@
-import { HttpClient } from '@angular/common/http';
+import {
+  AsyncPipe,
+  NgTemplateOutlet
+} from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DOCUMENT,
   inject,
   OnDestroy,
   OnInit,
+  output,
 } from '@angular/core';
-import { Apollo } from 'apollo-angular';
+import { MatFabButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 import {
   BehaviorSubject,
   catchError,
-  debounceTime,
   delay,
+  EMPTY,
   filter,
   from,
   interval,
@@ -20,6 +27,7 @@ import {
   mergeMap,
   Observable,
   of,
+  retry,
   scan,
   shareReplay,
   startWith,
@@ -28,16 +36,17 @@ import {
   takeUntil,
 } from 'rxjs';
 import { AuthService } from '../auth-service';
-import { ConfigService } from '../config-service';
 import {
-  getCustomisedQueries
-} from '../github-constants';
+  BookmarksService,
+  siteOf
+} from '../bookmarks-service';
+import { ConfigService } from '../config-service';
 import {
   GitIssue,
   ICard,
-  IData,
   IGitPr,
 } from '../github-types';
+import { GithubService } from '../github-service';
 import {
   GoogleCalendarService,
   IEvent
@@ -48,11 +57,10 @@ import {
   DailyData,
   DailyForecast,
   daysOfWeek,
-  IBookmarksFile,
+  IBookmark,
   IConfig,
   Item,
   ItemWithFeed,
-  IWallpaper,
   oneHour,
   twelveHours,
   WeatherIconMap,
@@ -60,7 +68,10 @@ import {
 import {
   RssService
 } from '../rssService.component';
+import { WallpaperService } from '../wallpaper-service';
 import { WeatherService } from '../weather-service';
+
+const googleFaviconService = 'https://t1.gstatic.com/faviconV2';
 
 function getFilteredCachedShareableFromApi$<T1, T2>(cacheKey:string,inPipe: Observable<T1>, project: (result: T1) => T2, destroy$: Observable<void>): Observable<T2> {
   return getCachedShareableFromApi$(cacheKey,inPipe, project, destroy$).pipe(
@@ -92,18 +103,23 @@ function getShareableFromApi$<T1, T2>(inPipe: Observable<T1>, project: (result: 
 
 @Component({
   selector: 'app-home',
+  imports: [AsyncPipe, NgTemplateOutlet, MatFabButton, MatIcon, MatTooltip],
   templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss'],
+  styleUrl: './home.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HomeComponent implements OnInit, OnDestroy {
-  private gql = inject(Apollo);
-  private http = inject(HttpClient);
+  private github = inject(GithubService);
+  private bookmarks = inject(BookmarksService);
   private rss = inject(RssService);
   private cal = inject(GoogleCalendarService);
   private authService = inject(AuthService);
   private configService = inject(ConfigService);
   private weatherService = inject(WeatherService);
+  private wallpaperService = inject(WallpaperService);
+  private document = inject(DOCUMENT);
+
+  public readonly openSettings = output<void>();
 
   public showEvents$!: Observable<boolean>;
   public noEvents$!: Observable<boolean>;
@@ -143,26 +159,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     'partly-cloudy-night': 'partly_cloudy_night'
   };
 
-  private onGqlError = new Subject<void>();
-
   private readonly numberOfArticles = 30;
 
   private readonly config = this.configService.getConfig();
-
-  private readonly noCacheOptions = {headers:{
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    }};
 
   public ngOnInit(): void {
 
     const events$ = interval(240000).pipe(
       startWith(0),
-      switchMap(() => getFilteredCachedShareableFromApi$('events', this.cal.fetchEvents(() => {
-        this.showLogin$.next(true);
-        localStorage.removeItem('access_token');
-      }), r => r, this.destroy$)),
+      switchMap(() => getFilteredCachedShareableFromApi$('events', this.cal.fetchEvents(
+        () => this.showLogin$.next(true),
+      ), r => r, this.destroy$)),
       map(v => {
         const now = new Date();
         return v?.filter(e => e.start?.dateTime != null && new Date(e.end.dateTime) >= now);
@@ -222,27 +229,17 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     if (this.config.githubQuery?.githubToken != null) {
       this.getGithubInfo(this.config);
-      this.onGqlError.pipe(
-        debounceTime(5_000)
-      ).subscribe(v => {
-        this.getGithubInfo(this.config);
-      });
     }
 
-    this.cards$ = this.http.get<IBookmarksFile>('Bookmarks', this.noCacheOptions).pipe(
-      map(bm => bm.roots.bookmark_bar.children
+    // shown straight away from the last new tab (Firefox's icons included), then refreshed
+    const bookmarks$ = getFilteredCachedShareableFromApi$('bookmarks', this.bookmarks.getToolbarBookmarks().pipe(
+      catchError(() => EMPTY),
+    ), r => r, this.destroy$);
+
+    this.cards$ = bookmarks$.pipe(
+      map(bm => bm
         .filter(c => c.url)
-        .map(c => {
-          const card = { ...c };
-          const hostName = HomeComponent.getHostName(card.url);
-          if (hostName != null && (this.config.knownIcons != null && this.config.knownIcons[hostName])) {//(this.knownIcons[hostName] || config.knownIcons[hostName])) {
-            card.iconUrl = this.config.knownIcons[hostName];
-          } else {
-            card.iconUrl = `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${hostName}&size=64`;
-            //card.iconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${hostName}`;
-          }
-          return card;
-        })
+        .map(c => this.toCard(c))
       ),
       shareReplay({ bufferSize: 1, refCount: true }),
       takeUntil(this.destroy$),
@@ -351,6 +348,8 @@ export class HomeComponent implements OnInit, OnDestroy {
             catchError(() => of(null)),
             takeUntil(this.destroy$),
           )),
+          // skip failed/unconfigured fetches so the cached weather stays on screen
+          filter(v => v != null),
           takeUntil(this.destroy$),
         ), r => r, this.destroy$);
 
@@ -368,13 +367,19 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (m == null) return null;
         const date = new Date(m!.time*1000);
         const hours = date.getHours();
-        return `${m!.summary} at ${hours > 12 ? hours - 12 : hours} ${hours > 12 ? 'pm' : 'am'}`;
+        return `${m!.summary} at ${hours % 12 || 12} ${hours >= 12 ? 'pm' : 'am'}`;
       }, this.destroy$);
 
-    this.wallpaperDescription$ = this.http.get<IWallpaper>('wallpaper.json',this.noCacheOptions).pipe(
-      map(v => v?.description??''),
-      catchError(() => of('')),
-      filter(v => v != null && v != ''),
+    // the cached wallpaper shows straight away, then today's replaces it once Bing responds
+    const wallpaper$ = getFilteredCachedShareableFromApi$('wallpaper', this.wallpaperService.getWallpaper().pipe(
+      catchError(() => EMPTY),
+    ), r => r, this.destroy$);
+
+    wallpaper$.subscribe(w => this.document.body.style.backgroundImage = `url("${w.url}")`);
+
+    this.wallpaperDescription$ = wallpaper$.pipe(
+      map(w => w.description ?? ''),
+      filter(v => v != ''),
       takeUntil(this.destroy$),
     );
   }
@@ -403,6 +408,38 @@ export class HomeComponent implements OnInit, OnDestroy {
     return `${this.getDayNameFromTimestamp(day.time)}: ${day.summary}, ${Math.round(day.temperatureLow)}°C - ${Math.round(day.temperatureHigh)}°C`
   }
 
+  // Icon sources, best first: your knownIcons override, Firefox's own cached icon, Google's favicon service,
+  // then the site's /favicon.ico. The template moves along the list as they fail and ends on a letter.
+  private toCard(bookmark: IBookmark): ICard {
+    const hostName = HomeComponent.getHostName(bookmark.url);
+    const site = siteOf(bookmark.url);
+    const icons = [
+      hostName != null ? this.config.knownIcons?.[hostName] : null,
+      bookmark.favicon,
+      hostName != null ? `${googleFaviconService}?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${hostName}&size=64` : null,
+      site != null ? `${new URL(bookmark.url).origin}/favicon.ico` : null,
+    ].filter((icon): icon is string => !!icon);
+    return { name: bookmark.name, url: bookmark.url, icons, iconIndex: 0 };
+  }
+
+  public nextIcon(card: ICard): void {
+    card.iconIndex++;
+  }
+
+  // Google's service answers sites it doesn't know with a 16px globe (a 404 that still displays),
+  // so anything that small from it counts as not found
+  public onIconLoad(card: ICard, event: Event): void {
+    const isGoogle = card.icons[card.iconIndex]?.startsWith(googleFaviconService);
+    if (isGoogle && (event.target as HTMLImageElement).naturalWidth <= 16) this.nextIcon(card);
+  }
+
+  // a steady colour per bookmark name for its letter icon
+  public letterColour(name: string): string {
+    let hash = 0;
+    for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+    return `hsl(${Math.abs(hash) % 360}, 45%, 40%)`;
+  }
+
   private static getHostName(url: string): null | string {
     const match = url.match(/:\/\/(www[0-9]?\.)?(.[^/:]+)/i);
     if (match != null && match.length > 2 && typeof match[2] === 'string' && match[2].length > 0) {
@@ -413,18 +450,15 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private getGithubInfo(config: IConfig) {
     if (config.githubQuery == null) return;
-    const issues$ = this.gql
-      .watchQuery<IData>({
-        query: getCustomisedQueries(config.githubQuery.owner, config.githubQuery.repo, config.githubQuery.username),
-        pollInterval: 60000
-      })
-      .valueChanges.pipe(
-        map(v => v.data),
-        shareReplay({ bufferSize: 1, refCount: true }),
-        takeUntil(this.destroy$),
-      );
-
-    issues$.subscribe({ error: err => this.onGqlError.next() });
+    const issues$ = interval(60000).pipe(
+      startWith(0),
+      switchMap(() => this.github.getRepositoryInfo().pipe(
+        retry({ count: 3, delay: 5_000 }),
+        catchError(() => EMPTY),
+      )),
+      shareReplay({ bufferSize: 1, refCount: true }),
+      takeUntil(this.destroy$),
+    );
 
     this.myIssues$ = getFilteredCachedShareableFromApi$('myIssues', issues$, v => (v?.repository?.assignedTo?.nodes ?? []).concat(v?.repository?.labeledEpic?.nodes ?? []), this.destroy$);
     this.prs$ = getFilteredCachedShareableFromApi$('prs', issues$, v => v?.repository?.pullRequests?.nodes ?? [], this.destroy$);

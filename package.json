@@ -1,45 +1,36 @@
 {
   "name": "home-two",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build --configuration production",
+    "postbuild": "web-ext build --source-dir dist/home-two/browser --artifacts-dir dist --filename home-two.xpi --overwrite-dest",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "postbuild": "powershell -ExecutionPolicy Bypass -File ./copy-build.ps1"
+    "test": "NODE_OPTIONS=--no-experimental-webstorage ng test",
+    "lint:extension": "web-ext lint --source-dir dist/home-two/browser",
+    "install-extension": "./scripts/install-extension.sh"
   },
   "private": true,
+  "packageManager": "npm@12.2.0",
   "dependencies": {
-    "@angular/animations": "^16.2.0",
-    "@angular/cdk": "^16.2.8",
-    "@angular/common": "^16.2.0",
-    "@angular/compiler": "^16.2.0",
-    "@angular/core": "^16.2.0",
-    "@angular/forms": "^16.2.0",
-    "@angular/material": "^16.2.8",
-    "@angular/platform-browser": "^16.2.0",
-    "@angular/platform-browser-dynamic": "^16.2.0",
-    "@angular/router": "^16.2.0",
-    "@apollo/client": "^3.0.0",
-    "@auth0/angular-jwt": "^5.1.2",
-    "apollo-angular": "^5.0.2",
-    "graphql": "^16",
+    "@angular/cdk": "^22.2.0",
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/material": "^22.2.0",
+    "@angular/platform-browser": "^22.2.0",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
-    "zone.js": "~0.13.0"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^16.2.6",
-    "@angular/cli": "^16.2.6",
-    "@angular/compiler-cli": "^16.2.0",
-    "@types/jasmine": "~4.3.0",
-    "jasmine-core": "~4.6.0",
-    "karma": "~6.4.0",
-    "karma-chrome-launcher": "~3.2.0",
-    "karma-coverage": "~2.2.0",
-    "karma-jasmine": "~5.1.0",
-    "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.1.3"
+    "@angular/build": "^22.2.0",
+    "@angular/cli": "^22.2.0",
+    "@angular/compiler-cli": "^22.2.0",
+    "jsdom": "^28.0.0",
+    "typescript": "~6.0.2",
+    "vitest": "^4.0.8",
+    "web-ext": "^10.7.0"
   }
 }
