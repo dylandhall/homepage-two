@@ -8,6 +8,13 @@ export interface IBrowserBookmark {
   url?: string;
 }
 
+export interface IBrowserTopSite {
+  url: string;
+  title?: string;
+  // data: URL of the largest icon Firefox has cached for the page
+  favicon?: string | null;
+}
+
 export interface IBrowserApi {
   storage: {
     local: {
@@ -17,6 +24,9 @@ export interface IBrowserApi {
   };
   bookmarks: {
     getChildren(id: string): Promise<IBrowserBookmark[]>;
+  };
+  topSites: {
+    get(options: { limit: number, onePerDomain: boolean, includeFavicon: boolean, includeBlocked: boolean }): Promise<IBrowserTopSite[]>;
   };
   identity: {
     getRedirectURL(): string;

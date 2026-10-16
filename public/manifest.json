@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Home Two",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Personal new tab page: bookmarks, calendar, GitHub issues and PRs, weather, news and the Bing image of the day.",
   "browser_specific_settings": {
     "gecko": {
@@ -18,7 +18,8 @@
   "permissions": [
     "bookmarks",
     "identity",
-    "storage"
+    "storage",
+    "topSites"
   ],
   "host_permissions": [
     "https://www.bing.com/*",

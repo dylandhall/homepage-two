@@ -38,6 +38,51 @@ describe('HomeComponent', () => {
     expect(cards[0].querySelector('img')?.getAttribute('alt')).toBe('Mail');
   });
 
+  it('tries each icon source in turn, then shows a letter', async () => {
+    const { fixture, http } = await setup({ knownIcons: { 'example.com': 'https://icons.test/example.png' } });
+    http.expectOne('bookmarks.json').flush([
+      { name: 'Example', url: 'https://www.example.com/page', favicon: 'data:image/png;base64,AAAA' },
+    ]);
+    await fixture.whenStable();
+
+    const card = () => (fixture.nativeElement as HTMLElement).querySelector('.card:not(.settings-button)')!;
+    const sources: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      const img = card().querySelector('img')!;
+      sources.push(img.getAttribute('src')!);
+      img.dispatchEvent(new Event('error'));
+      await fixture.whenStable();
+    }
+
+    expect(sources).toEqual([
+      'https://icons.test/example.png',
+      'data:image/png;base64,AAAA',
+      'https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://example.com&size=64',
+      'https://www.example.com/favicon.ico',
+    ]);
+    expect(card().querySelector('img')).toBeNull();
+    expect(card().querySelector('.letter-icon')?.textContent).toBe('E');
+  });
+
+  it("treats Google's 16px globe for unknown sites as no icon", async () => {
+    const { fixture, http } = await setup({});
+    http.expectOne('bookmarks.json').flush([
+      { name: 'Firefox icon', url: 'https://one.example/', favicon: 'data:image/png;base64,AAAA' },
+      { name: 'Unknown', url: 'https://two.example/' },
+    ]);
+    await fixture.whenStable();
+
+    // jsdom doesn't load images, so a load event sees naturalWidth 0 - the same as a tiny placeholder
+    const imgs = () => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.card:not(.settings-button) img'));
+    imgs().forEach(img => img.dispatchEvent(new Event('load')));
+    await fixture.whenStable();
+
+    expect(imgs().map(img => img.getAttribute('src'))).toEqual([
+      'data:image/png;base64,AAAA',
+      'https://two.example/favicon.ico',
+    ]);
+  });
+
   it('shows the clock', async () => {
     const { fixture } = await setup({});
     await fixture.whenStable();

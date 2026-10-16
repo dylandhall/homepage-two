@@ -36,7 +36,10 @@ import {
   takeUntil,
 } from 'rxjs';
 import { AuthService } from '../auth-service';
-import { BookmarksService } from '../bookmarks-service';
+import {
+  BookmarksService,
+  siteOf
+} from '../bookmarks-service';
 import { ConfigService } from '../config-service';
 import {
   GitIssue,
@@ -54,6 +57,7 @@ import {
   DailyData,
   DailyForecast,
   daysOfWeek,
+  IBookmark,
   IConfig,
   Item,
   ItemWithFeed,
@@ -66,6 +70,8 @@ import {
 } from '../rssService.component';
 import { WallpaperService } from '../wallpaper-service';
 import { WeatherService } from '../weather-service';
+
+const googleFaviconService = 'https://t1.gstatic.com/faviconV2';
 
 function getFilteredCachedShareableFromApi$<T1, T2>(cacheKey:string,inPipe: Observable<T1>, project: (result: T1) => T2, destroy$: Observable<void>): Observable<T2> {
   return getCachedShareableFromApi$(cacheKey,inPipe, project, destroy$).pipe(
@@ -225,22 +231,16 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.getGithubInfo(this.config);
     }
 
-    this.cards$ = this.bookmarks.getToolbarBookmarks().pipe(
+    // shown straight away from the last new tab (Firefox's icons included), then refreshed
+    const bookmarks$ = getFilteredCachedShareableFromApi$('bookmarks', this.bookmarks.getToolbarBookmarks().pipe(
+      catchError(() => EMPTY),
+    ), r => r, this.destroy$);
+
+    this.cards$ = bookmarks$.pipe(
       map(bm => bm
         .filter(c => c.url)
-        .map(c => {
-          const card: ICard = { ...c, iconUrl: '' };
-          const hostName = HomeComponent.getHostName(card.url);
-          if (hostName != null && (this.config.knownIcons != null && this.config.knownIcons[hostName])) {//(this.knownIcons[hostName] || config.knownIcons[hostName])) {
-            card.iconUrl = this.config.knownIcons[hostName];
-          } else {
-            card.iconUrl = `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${hostName}&size=64`;
-            //card.iconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${hostName}`;
-          }
-          return card;
-        })
+        .map(c => this.toCard(c))
       ),
-      catchError(() => of(<ICard[]>[])),
       shareReplay({ bufferSize: 1, refCount: true }),
       takeUntil(this.destroy$),
     );
@@ -406,6 +406,38 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   public getWeatherTooltip(day: DailyData): string {
     return `${this.getDayNameFromTimestamp(day.time)}: ${day.summary}, ${Math.round(day.temperatureLow)}°C - ${Math.round(day.temperatureHigh)}°C`
+  }
+
+  // Icon sources, best first: your knownIcons override, Firefox's own cached icon, Google's favicon service,
+  // then the site's /favicon.ico. The template moves along the list as they fail and ends on a letter.
+  private toCard(bookmark: IBookmark): ICard {
+    const hostName = HomeComponent.getHostName(bookmark.url);
+    const site = siteOf(bookmark.url);
+    const icons = [
+      hostName != null ? this.config.knownIcons?.[hostName] : null,
+      bookmark.favicon,
+      hostName != null ? `${googleFaviconService}?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${hostName}&size=64` : null,
+      site != null ? `${new URL(bookmark.url).origin}/favicon.ico` : null,
+    ].filter((icon): icon is string => !!icon);
+    return { name: bookmark.name, url: bookmark.url, icons, iconIndex: 0 };
+  }
+
+  public nextIcon(card: ICard): void {
+    card.iconIndex++;
+  }
+
+  // Google's service answers sites it doesn't know with a 16px globe (a 404 that still displays),
+  // so anything that small from it counts as not found
+  public onIconLoad(card: ICard, event: Event): void {
+    const isGoogle = card.icons[card.iconIndex]?.startsWith(googleFaviconService);
+    if (isGoogle && (event.target as HTMLImageElement).naturalWidth <= 16) this.nextIcon(card);
+  }
+
+  // a steady colour per bookmark name for its letter icon
+  public letterColour(name: string): string {
+    let hash = 0;
+    for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+    return `hsl(${Math.abs(hash) % 360}, 45%, 40%)`;
   }
 
   private static getHostName(url: string): null | string {

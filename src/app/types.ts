@@ -3,6 +3,8 @@
 export interface IBookmark{
   url: string;
   name: string;
+  // Firefox's own cached icon for the site, when it's one of your most visited
+  favicon?: string;
 }
 type KnownIconRecord = Record<string, string>;
 type TimezoneToDisplay = { timezone: string, name: string }; // offset in hours, description

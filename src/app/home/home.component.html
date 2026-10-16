@@ -6,10 +6,18 @@
           class="card"
           (click)="goto(card.url)"
           matTooltipPosition="below"
-          [matTooltip]="card.name"><img alt="{{card.name}}"
-          height="32"
-          width="32"
-          src="{{card.iconUrl}}"/></button>
+          [matTooltip]="card.name">
+          @if (card.iconIndex < card.icons.length) {
+            <img alt="{{card.name}}"
+              height="32"
+              width="32"
+              [src]="card.icons[card.iconIndex]"
+              (load)="onIconLoad(card, $event)"
+              (error)="nextIcon(card)"/>
+          } @else {
+            <span class="letter-icon" [style.background-color]="letterColour(card.name)">{{card.name.charAt(0)}}</span>
+          }
+        </button>
       }
       <button mat-fab
         class="card settings-button"
